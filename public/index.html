@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Calculator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .calculator-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .calculator-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #3498db;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            min-height: 20px;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        #conversionFunctions {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced Calculator</h1>
+    
+    <div class="calculator-container">
+        <!-- Calculate Section -->
+        <div class="calculator-section">
+            <h2>Calculate</h2>
+            <div>
+                <label for="expression">Expression:</label>
+                <input type="text" id="expression" placeholder="e.g. 2 + 2 or sin(45)">
+                <button onclick="calculate()">Calculate</button>
+                <div class="result" id="calculateResult"></div>
+            </div>
+        </div>
+        
+        <!-- Convert Section -->
+        <div class="calculator-section">
+            <h2>Convert Units</h2>
+            <div>
+                <label for="category">Category:</label>
+                <select id="category" onchange="loadConversions()">
+                    <option value="">Select Category</option>
+                </select>
+                
+                <label for="conversion">Conversion:</label>
+                <select id="conversion">
+                    <option value="">Select Conversion</option>
+                </select>
+                
+                <label for="conversionValue">Value:</label>
+                <input type="number" id="conversionValue" placeholder="Enter value to convert">
+                
+                <button onclick="convert()">Convert</button>
+                <div class="result" id="convertResult"></div>
+            </div>
+        </div>
+        
+        <!-- Memory Section -->
+        <div class="calculator-section">
+            <h2>Memory Operations</h2>
+            <div>
+                <div class="result" id="memoryValue">Memory: 0</div>
+                
+                <label for="memoryOperation">Operation:</label>
+                <select id="memoryOperation">
+                    <option value="add">Add</option>
+                    <option value="subtract">Subtract</option>
+                    <option value="set">Set</option>
+                    <option value="clear">Clear</option>
+                </select>
+                
+                <div id="memoryValueInput">
+                    <label for="memoryOperationValue">Value:</label>
+                    <input type="number" id="memoryOperationValue" placeholder="Enter value">
+                </div>
+                
+                <button onclick="memoryOperation()">Perform Operation</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Conversion functions stored for reference -->
+    <div id="conversionFunctions"></div>
+    
+    <script>
+        // Base URL for API
+        const API_BASE_URL = window.location.origin;
+        
+        // Load categories and memory on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCategories();
+            await updateMemoryDisplay();
+            
+            // Handle memory operation changes
+            document.getElementById('memoryOperation').addEventListener('change', function() {
+                const valueInputDiv = document.getElementById('memoryValueInput');
+                valueInputDiv.style.display = this.value === 'clear' ? 'none' : 'block';
+            });
+        });
+        
+        // Calculate expression
+        async function calculate() {
+            const expression = document.getElementById('expression').value;
+            const resultDiv = document.getElementById('calculateResult');
+            
+            if (!expression) {
+                resultDiv.innerHTML = '<span class="error">Please enter an expression</span>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/calculate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ expression })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.textContent = `Result: ${data.result}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">Error: ${data.error}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+        
+        // Load conversion categories
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/convert`);
+                const data = await response.json();
+                
+                const categorySelect = document.getElementById('category');
+                const conversionFunctionsDiv = document.getElementById('conversionFunctions');
+                
+                // Store all conversion functions
+                conversionFunctionsDiv.textContent = JSON.stringify(data.categories);
+                
+                // Clear existing options
+                categorySelect.innerHTML = '<option value="">Select Category</option>';
+                
+                // Add options for each category
+                Object.keys(data.categories).forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category;
+                    option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+                    categorySelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+        
+        // Load conversions for selected category
+        function loadConversions() {
+            const category = document.getElementById('category').value;
+            const conversionSelect = document.getElementById('conversion');
+            
+            // Clear existing options
+            conversionSelect.innerHTML = '<option value="">Select Conversion</option>';
+            
+            if (!category) return;
+            
+            try {
+                // Get stored conversion functions
+                const categoriesData = JSON.parse(document.getElementById('conversionFunctions').textContent);
+                const conversions = categoriesData[category];
+                
+                // Add options for each conversion function
+                conversions.forEach(conversion => {
+                    const option = document.createElement('option');
+                    option.value = conversion;
+                    option.textContent = formatConversionName(conversion);
+                    conversionSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading conversions:', error);
+            }
+        }
+        
+        // Format conversion function name for display
+        function formatConversionName(name) {
+            return name
+                .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+                .replace(/^./, str => str.toUpperCase()); // Capitalize first letter
+        }
+        
+        // Convert units
+        async function convert() {
+            const conversionFunction = document.getElementById('conversion').value;
+            const value = document.getElementById('conversionValue').value;
+            const resultDiv = document.getElementById('convertResult');
+            
+            if (!conversionFunction) {
+                resultDiv.innerHTML = '<span class="error">Please select a conversion</span>';
+                return;
+            }
+            
+            if (!value) {
+                resultDiv.innerHTML = '<span class="error">Please enter a value</span>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/convert`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ function: conversionFunction, value: Number(value) })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.textContent = `Result: ${data.result}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="error">Error: ${data.error}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+        
+        // Perform memory operation
+        async function memoryOperation() {
+            const operation = document.getElementById('memoryOperation').value;
+            const valueElement = document.getElementById('memoryOperationValue');
+            let value = null;
+            
+            if (operation !== 'clear') {
+                value = valueElement.value;
+                if (!value && (operation === 'add' || operation === 'subtract' || operation === 'set')) {
+                    document.getElementById('memoryValue').innerHTML = 
+                        '<span class="error">Please enter a value</span>';
+                    return;
+                }
+            }
+            
+            try {
+                const requestBody = { operation };
+                if (value !== null) {
+                    requestBody.value = Number(value);
+                }
+                
+                const response = await fetch(`${API_BASE_URL}/memory`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateMemoryDisplay();
+                    valueElement.value = '';
+                } else {
+                    document.getElementById('memoryValue').innerHTML = 
+                        `<span class="error">Error: ${data.error}</span>`;
+                }
+            } catch (error) {
+                document.getElementById('memoryValue').innerHTML = 
+                    `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+        
+        // Update memory display
+        async function updateMemoryDisplay() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/memory`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('memoryValue').textContent = `Memory: ${data.memory}`;
+                }
+            } catch (error) {
+                console.error('Error updating memory:', error);
+            }
+        }
+    </script>
+</body>
+</html> 
