@@ -4,7 +4,6 @@
 
 A feature-rich calculator built with Node.js that supports a wide range of mathematical operations. Available as both a CLI tool and a web application with a REST API. The application can be run locally or using Docker.
 
-![Calculator Demo](https://via.placeholder.com/800x400?text=Advanced+Calculator+Demo)
 
 ## Table of Contents
 
